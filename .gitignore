@@ -1,0 +1,50 @@
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor / IDE
+.vscode/
+.idea/
+*.iml
+
+# Logs and runtime files
+*.log
+logs/
+*.pid
+*.seed
+*.pid.lock
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Java / Maven backend
+backend/target/
+backend/.mvn/
+
+# Node / React frontend
+frontend/node_modules/
+frontend/build/
+frontend/.cache/
+frontend/.eslintcache
+frontend/.parcel-cache/
+frontend/.next/
+frontend/coverage/
+
+# Generic cache/temp
+*.tmp
+*.temp
+tmp/
+temp/
+.cache/
+
+# Archive files
+*.zip
+*.tar
+*.tar.gz
+*.7z
