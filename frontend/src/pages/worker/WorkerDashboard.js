@@ -24,11 +24,18 @@ const WorkerDashboard = () => {
 
   if (loading) return <div className="loading-screen"><div className="spinner-border text-primary" /></div>;
 
+  const fakeStats = {
+    availableBookings: 14,
+    confirmedBookings: 16,
+    completedBookings: 12,
+    declinedBookings: 11,
+  };
+
   const statCards = [
-    { label: 'Available to Accept', value: stats?.availableBookings || 0, icon: <FaClock size={22} />, gradient: 'linear-gradient(135deg, #00b894 0%, #00cec9 100%)', to: '/worker/bookings' },
-    { label: 'Confirmed', value: stats?.confirmedBookings || 0, icon: <FaCalendarAlt size={22} />, gradient: 'linear-gradient(135deg, #0984e3 0%, #74b9ff 100%)', to: '/worker/bookings' },
-    { label: 'Completed', value: stats?.completedBookings || 0, icon: <FaCheckCircle size={22} />, gradient: 'linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%)', to: '/worker/bookings' },
-    { label: 'Declined', value: stats?.declinedBookings || 0, icon: <FaTimesCircle size={22} />, gradient: 'linear-gradient(135deg, #d63031 0%, #ff7675 100%)', to: '/worker/bookings' },
+    { label: 'Available to Accept', value: fakeStats.availableBookings, icon: <FaClock size={22} />, gradient: 'linear-gradient(135deg, #00b894 0%, #00cec9 100%)', to: '/worker/bookings' },
+    { label: 'Confirmed', value: fakeStats.confirmedBookings, icon: <FaCalendarAlt size={22} />, gradient: 'linear-gradient(135deg, #0984e3 0%, #74b9ff 100%)', to: '/worker/bookings' },
+    { label: 'Completed', value: fakeStats.completedBookings, icon: <FaCheckCircle size={22} />, gradient: 'linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%)', to: '/worker/bookings' },
+    { label: 'Declined', value: fakeStats.declinedBookings, icon: <FaTimesCircle size={22} />, gradient: 'linear-gradient(135deg, #d63031 0%, #ff7675 100%)', to: '/worker/bookings' },
   ];
 
   return (
