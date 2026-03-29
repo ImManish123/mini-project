@@ -14,6 +14,45 @@ import java.util.regex.*;
 @Slf4j
 public class SentimentAnalysisService {
 
+    private static final Map<String, List<String>> CATEGORY_QUESTION_BANK = Map.of(
+        "plumbing", List.of(
+            "Was the leak, blockage, or plumbing issue fully fixed?",
+            "Did water pressure and flow improve after the service?",
+            "Were pipes, taps, and joints checked for hidden leaks?",
+            "Did the professional keep the bathroom/kitchen area clean after work?",
+            "Did the plumber explain what caused the issue and how to prevent it?"),
+        "electrical", List.of(
+            "Were all switches, sockets, and fixtures tested after repair?",
+            "Was the electrical issue resolved without repeated tripping or sparks?",
+            "Did the electrician follow safe practices while working?",
+            "Was the fault diagnosis explained clearly before fixing?",
+            "Are you satisfied with the quality and safety of the final work?"),
+        "cleaning", List.of(
+            "Were the requested areas cleaned thoroughly?",
+            "Was dust, stains, or buildup removed effectively?",
+            "Was the service completed within the promised time?",
+            "Did the cleaner use proper materials without damaging surfaces?",
+            "Are you satisfied with the hygiene level after completion?"),
+        "painting", List.of(
+            "Was the paint finish smooth and consistent across walls/surfaces?",
+            "Were edges, corners, and trims painted neatly?",
+            "Was proper surface preparation done before painting?",
+            "Were spills, stains, or paint marks cleaned after completion?",
+            "Did the final color and quality match your expectation?"),
+        "carpentry", List.of(
+            "Was the furniture or woodwork repaired/installed correctly?",
+            "Are alignment, fitting, and stability satisfactory?",
+            "Was the work finished with clean edges and neat detailing?",
+            "Did the carpenter use durable materials and proper hardware?",
+            "Was the area cleaned and debris removed after work?"),
+        "ac", List.of(
+            "Is the cooling performance better after the AC service?",
+            "Were filters, vents, and coils cleaned properly?",
+            "Is the AC running quietly without unusual noise or smell?",
+            "Did the technician check gas level and overall unit health?",
+            "Was the service explained with maintenance tips for better performance?")
+    );
+
     @Value("${gemini.api.key:}")
     private String apiKey;
 
@@ -22,12 +61,19 @@ public class SentimentAnalysisService {
 
     private final RestTemplate restTemplate = new RestTemplate();
 
-        public List<String> generateAtsQuestions(String category) {
+    public List<String> generateAtsQuestions(String category) {
+        String normalizedCategory = normalizeCategory(category);
+        List<String> categoryFallback = getCategorySpecificFallbackQuestions(normalizedCategory);
+
         if (apiKey == null || apiKey.isEmpty()) {
-            return Arrays.asList("Did the " + category + " arrive on time?", "How would you rate the quality of the " + category + " service?", "Would you hire this " + category + " professional again?", "Was the pricing fair for the work provided?", "Did the professional clean up the work area before leaving?");
+            return categoryFallback;
         }
         try {
-            String prompt = "You are an AI generating an ATS (Automated Tracking Score) survey. Generate exactly 5 short, specific questions to ask a customer to evaluate a completed '" + category + "' service. Return each question on a new line, starting with a dash.";
+            String prompt = "You are generating an ATS (Automated Tracking Score) survey for a completed '"
+                    + normalizedCategory
+                    + "' service. Generate exactly 5 short questions that are specific to this service type. "
+                    + "Avoid generic questions. Focus on technical quality, completion, cleanliness/safety, and customer satisfaction for this service. "
+                    + "Return one question per line.";
             
             // Build Gemini request
             Map<String, Object> textPart = new HashMap<>(); textPart.put("text", prompt);
@@ -47,19 +93,20 @@ public class SentimentAnalysisService {
                 List<Map<String, Object>> parts = (List<Map<String, Object>>) content.get("parts");
                 String text = (String) parts.get(0).get("text");
                 
-                List<String> questions = new ArrayList<>();
-                for (String line : text.split("\n")) {
-                    if (line.trim().startsWith("-") || line.trim().startsWith("*")) {
-                        String q = line.replaceAll("^[-*]\\s*", "").trim();
-                        if (!q.isEmpty()) questions.add(q);
+                List<String> aiQuestions = parseQuestionsFromText(text);
+                if (!aiQuestions.isEmpty()) {
+                    LinkedHashSet<String> merged = new LinkedHashSet<>(aiQuestions);
+                    merged.addAll(categoryFallback);
+                    List<String> finalQuestions = new ArrayList<>(merged);
+                    if (finalQuestions.size() >= 5) {
+                        return finalQuestions.subList(0, 5);
                     }
                 }
-                if (questions.size() >= 5) return questions.subList(0, 5);
             }
         } catch (Exception e) {
             log.error("Error generating ATS questions: {}", e.getMessage());
         }
-        return Arrays.asList("Was the professional courteous?", "Was the issue fully resolved?", "Were you satisfied with the time taken?", "Was the pricing transparent and fair?", "Would you recommend this service to others?");
+        return categoryFallback;
     }
 
     public com.smarthome.dto.AtsScoreResponse calculateAtsScore(Map<String, String> answers) {
@@ -328,6 +375,46 @@ public class SentimentAnalysisService {
     private String extractString(String text, String pattern) {
         Matcher m = Pattern.compile(pattern, Pattern.CASE_INSENSITIVE).matcher(text);
         return m.find() ? m.group(1) : null;
+    }
+
+    private String normalizeCategory(String category) {
+        if (category == null || category.trim().isEmpty()) {
+            return "general service";
+        }
+        return category.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private List<String> getCategorySpecificFallbackQuestions(String normalizedCategory) {
+        for (Map.Entry<String, List<String>> entry : CATEGORY_QUESTION_BANK.entrySet()) {
+            if (normalizedCategory.contains(entry.getKey())) {
+                return entry.getValue();
+            }
+        }
+
+        return Arrays.asList(
+                "Did the " + normalizedCategory + " professional arrive on time?",
+                "Was the " + normalizedCategory + " issue fully resolved?",
+                "Was the quality of the " + normalizedCategory + " work satisfactory?",
+                "Was pricing and scope of the " + normalizedCategory + " service clear and fair?",
+                "Would you recommend this " + normalizedCategory + " service to others?");
+    }
+
+    private List<String> parseQuestionsFromText(String text) {
+        List<String> questions = new ArrayList<>();
+        for (String line : text.split("\\r?\\n")) {
+            String q = line.trim();
+            if (q.isEmpty()) {
+                continue;
+            }
+
+            q = q.replaceFirst("^[-*]\\s*", "");
+            q = q.replaceFirst("^\\d+[).]\\s*", "");
+            q = q.trim();
+            if (!q.isEmpty()) {
+                questions.add(q);
+            }
+        }
+        return questions;
     }
 }
 

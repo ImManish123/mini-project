@@ -118,7 +118,7 @@ export const reviewAPI = {
   create: (data) => api.post('/reviews', data),
   delete: (id) => api.delete(`/reviews/${id}`),
   analyzeSentiment: (comment) => api.post('/reviews/analyze-sentiment', { comment }),
-  getAtsQuestions: (category) => api.get(`/reviews/ats-questions?category=${category}`),
+  getAtsQuestions: (category) => api.get(`/reviews/ats-questions?category=${encodeURIComponent(category || 'general service')}`),
   calculateAtsScore: (answers) => api.post('/reviews/calculate-ats', answers),
 };
 
